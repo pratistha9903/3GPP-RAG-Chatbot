@@ -277,17 +277,4 @@ Key settings in `.env`:
 
 The [GSMA/telecom-kg-rel19](https://huggingface.co/datasets/GSMA/telecom-kg-rel19) dataset is released under **CC BY-NC 4.0**.
 
----
 
-## Citation
-
-```bibtex
-@dataset{kudf_rel19_telecom_kg_2026,
-  title        = {3GPP Release 19 Telecom Knowledge Graph},
-  author       = {Yang, Yuzhi and Bariah, Lina and Lu, Yuhuan and Debbah, Merouane},
-  year         = {2026},
-  publisher    = {Hugging Face},
-  organization = {Khalifa University Research Institute for Digital Future (KU-DF)},
-  url          = {https://huggingface.co/datasets/GSMA/telecom-kg-rel19}
-}
-```
