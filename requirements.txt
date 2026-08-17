@@ -1,0 +1,28 @@
+# Core RAG & ML
+langchain>=0.3.0
+langchain-community>=0.3.0
+langchain-text-splitters>=0.3.0
+sentence-transformers>=3.0.0
+chromadb>=0.5.0
+rank-bm25>=0.2.2
+networkx>=3.2
+numpy>=1.26.0
+
+# Data & HuggingFace
+huggingface-hub>=0.24.0
+datasets>=3.0.0
+
+# LLM providers removed — extractive zero-hallucination mode uses rule-based agents only
+
+# UI
+streamlit>=1.38.0
+
+# Utilities
+python-dotenv>=1.0.0
+pydantic>=2.8.0
+pydantic-settings>=2.4.0
+tqdm>=4.66.0
+pyyaml>=6.0.0
+
+# Testing
+pytest>=8.0.0

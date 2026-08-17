@@ -1,0 +1,30 @@
+# Environment & secrets
+.env
+venv/
+.venv/
+env/
+
+# Downloaded dataset (run: python scripts/download_data.py)
+data/chunks/
+data/mappings/
+data/tkg/
+data/.cache/
+
+# Built index (run: python scripts/build_index.py)
+data/index/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
