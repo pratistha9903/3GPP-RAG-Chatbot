@@ -21,6 +21,12 @@ No external LLM API keys required.
 
 ---
 
+## Demo Video 
+
+https://github.com/user-attachments/assets/d4430af2-c5f3-4065-9163-edc757903a33
+
+----
+
 ## Zero-Hallucination Design
 
 The system **never generates free-form text**. It only returns **verbatim quotes** from retrieved 3GPP documentation, then verifies them before release.
