@@ -8,7 +8,7 @@ No external LLM API keys required.
 
 
 
----
+-----
 
 ## Project Highlights
 
