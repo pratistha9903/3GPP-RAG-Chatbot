@@ -29,14 +29,14 @@ The system **never generates free-form text**. It only returns **verbatim quotes
 |-----------|----------|
 | **Primary 3GPP evidence required** | Rejects if no HF spec chunks are retrieved |
 | **Extractive generation** | Verbatim quotes only — no external LLM |
-| **Chain-of-Noting (CoN)** | Rejects when retrieved context is insufficient |
+| **Chain-of-Noting (CoN)** | Rejects when retrieved context is insufficient (rule-based `MockLLM` + retrieval rules) |
 | **Citation verification** | Rejects citations not present in retrieved chunks |
 | **Grounding verification** | Rejects claims not supported by retrieved text |
-| **Reflection agent** | Final rule-based cross-validation |
+| **Reflection agent** | Final rule-based cross-validation (`MockLLM`) |
 
 When evidence is insufficient, the chatbot responds:
 
-> *"I cannot answer this question based on the available 3GPP documentation."*
+> *"I cannot answer this question based on the available 3GPP documentation. The retrieved information is insufficient to provide a reliable, citation-backed response."*
 
 ---
 
@@ -62,7 +62,7 @@ User Query
     │
     ▼
 ┌─────────────────────────┐
-│  Query Router            │  ← Intent classification + query expansion
+│  Query Router            │  ← Intent classification only
 └────────────┬────────────┘
              │
     ┌────────┴────────┐
@@ -73,12 +73,18 @@ User Query
 │ BM25 +   │   │ (Ontology)   │
 │ Semantic │   │              │
 │ + RRF    │   │              │
+│ + query  │   │              │
+│ expansion│   │              │
 └────┬─────┘   └──────┬───────┘
      │                │
      └────────┬───────┘
               ▼
 ┌─────────────────────────┐
-│  Chain-of-Noting (CoN)   │  ← Rejects if context insufficient
+│  Require 3GPP Evidence   │  ← Reject if no primary spec chunks
+└────────────┬────────────┘
+             ▼
+┌─────────────────────────┐
+│  Chain-of-Noting (CoN)   │  ← MockLLM + retrieval rules
 └────────────┬────────────┘
              ▼
 ┌─────────────────────────┐
@@ -94,10 +100,11 @@ User Query
 └────────────┬────────────┘
              ▼
 ┌─────────────────────────┐
-│  Reflection Agent        │  ← Final cross-validation
+│  Reflection Agent        │  ← Final cross-validation (MockLLM)
 └────────────┬────────────┘
              ▼
          Final Answer
+        (or Rejection)
 ```
 
 ---
@@ -106,20 +113,27 @@ User Query
 
 ### Retrieval & Indexing
 - **Hybrid retrieval** — BM25 keyword search + dense vector semantic search, fused with Reciprocal Rank Fusion (RRF)
-- **Query expansion** — maps everyday terms to 3GPP vocabulary (e.g. "phone" → UE, "connect" → RRC/attach/register)
+- **Query expansion** — in `hybrid_retriever.py` (not the query router); maps everyday terms to 3GPP vocabulary (e.g. "phone" → UE, "connect" → RRC/attach/register)
 - **Structure-aware chunking** — preserves section/clause boundaries from 3GPP specs
 - **Parent-child enrichment** — adds parent section context to child chunks
 - **Source priority** — primary HF 3GPP chunks boosted 3× over KG supplement
 
 ### Knowledge Graph (KG-RAG)
-- Loads `rel19_3gpp_telecom_kg.graphml` from the HF dataset
+- Loads `rel19_3gpp_telecom_kg.graphml` from the HF dataset via `knowledge_graph/loader.py`
 - Retrieves ontology triples for relationship queries (e.g. entity interactions)
 - Used as **supplement only** — primary answers must come from 3GPP spec text
 
 ### Generation & Verification
-- **Extractive answers** — selects the most relevant verbatim excerpts from retrieved chunks
+- **Extractive answers** — `ExtractiveAnswerBuilder` selects verbatim excerpts (active generator)
 - **Mandatory citations** — every answer includes TS number, release, and clause where available
+- **CoN + Reflection** — rule-based `MockLLM` agents (no external API)
 - **Multi-layer rejection** — off-topic or ungrounded queries are rejected, not guessed
+
+### Pipeline order (`src/pipeline/rag_pipeline.py`)
+
+1. Query routing → 2. Hybrid retrieval + query expansion → 3. Parent-context enrichment → 4. KG triples → 5. Require 3GPP evidence → 6. Chain-of-Noting → 7. Extractive generation → 8. Citation verify → 9. Grounding verify → 10. Reflection agent
+
+See **[PROJECT_DESIGN.md](PROJECT_DESIGN.md)** for full component-level design documentation.
 
 ---
 
@@ -209,7 +223,8 @@ pytest tests/ -v
 RAG/
 ├── app/                    # Streamlit web UI
 ├── config/                 # Settings (.env)
-├── data/
+├── PROJECT_DESIGN.md       # Full project design document
+├── data/                   # Downloaded at runtime (not in git)
 │   ├── tkg/                # Knowledge graph (downloaded)
 │   ├── chunks/             # HF chunk metadata (downloaded)
 │   ├── mappings/           # Entity mappings (downloaded)
@@ -222,10 +237,10 @@ RAG/
 │   ├── indexing/           # Chunking, HF loader, embedding, indexing
 │   ├── retrieval/          # Hybrid retriever, query router, KG retriever
 │   ├── knowledge_graph/    # GraphML loader
-│   ├── generation/         # Extractive generator, verification agents
+│   ├── generation/         # Extractive generator, MockLLM, reflection agent
 │   ├── verification/       # CoN, citation verifier, grounding verifier
-│   └── pipeline/           # End-to-end orchestration
-└── tests/                  # Automated test suite
+│   └── pipeline/           # End-to-end orchestration (rag_pipeline.py)
+└── tests/                  # Automated test suite (10 tests)
 ```
 
 ---
@@ -254,10 +269,12 @@ Key settings in `.env`:
 | Vector search | NumPy cosine similarity |
 | Keyword search | BM25 (`rank-bm25`) |
 | Fusion | Reciprocal Rank Fusion (RRF) |
-| Knowledge graph | NetworkX + GraphML |
-| Verification | Rule-based CoN + reflection agents |
-| UI | Streamlit |
+| Knowledge graph | NetworkX `DiGraph` + GraphML parsing |
+| Text splitting | langchain-text-splitters |
+| Verification | Rule-based `MockLLM` (CoN + reflection) |
+| UI | Streamlit + CLI |
 | Config | pydantic-settings |
+| Tests | pytest (10 tests) |
 
 ---
 
@@ -267,6 +284,7 @@ Key settings in `.env`:
 - **Dataset coverage** — limited to 3GPP Rel-19 content present in `GSMA/telecom-kg-rel19`
 - **HF text chunks** — `rel19_text_chunks.jsonl` contains metadata only; 3GPP text is reconstructed from KG-grounded descriptions
 - **Indirect questions** — broad questions may be rejected if retrieval confidence is below threshold
+- **No external LLM** — CoN and reflection use rule-based `MockLLM`; `compliance_agent.py` exists but is not used in the active pipeline
 
 ---
 
