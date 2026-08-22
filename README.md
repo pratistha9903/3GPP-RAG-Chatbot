@@ -6,10 +6,7 @@ A **Knowledge Graph-enhanced Retrieval-Augmented Generation (KG-RAG)** chatbot f
 
 No external LLM API keys required.
 
----
-## Demo Video 
 
-https://github.com/user-attachments/assets/d4430af2-c5f3-4065-9163-edc757903a33
 
 ---
 
